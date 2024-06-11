@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Chatroom</title>
+    <link rel="stylesheet" href="/webjars/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/style.css">
+
+
+</head>
+<body>
+    <div id="name-from" class="bg-primary d-flex align-items-center">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-md-4 offset-md-4">
+                    <div class="input-group">
+                        <input type="text"
+                        placeholder="Enter your name"
+                        id="name-value"
+                        class="form-control"
+                        autofocus>
+                        <div class="input-group-append">
+                            <button class="btn btn-dark" id="login">
+                                Enter
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    <div id="chat-room" class="d-none">
+        <div class="container-fluid">
+            <button class="btn btn-dark" id="subscribe">
+                Subscribe
+            </button>
+
+            <div class="row">
+                <div class="col-md-6 offset-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h3 id="title"> </h3>
+                            <div class="input-group">
+                                <input type="text"
+                                       placeholder="Enter your message"
+                                       id="message-value"
+                                       class="form-control"
+                                       autofocus>
+                                <div class="input-group-append">
+                                    <button class="btn btn-dark" id="send-btn">
+                                        Send
+                                    </button>
+                                    <button class="btn btn-dark" id="logout">
+                                        Logout
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table id="message-container-table">
+
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="webjars/jquery/jquery.min.js"></script>
+    <script src="/webjars/sockjs-client/sockjs.min.js"></script>
+    <script src="/webjars/stomp-websocket/stomp.min.js"></script>
+
+    <script>
+        let stompClient = null
+
+        //connect the socket
+        function connect() {
+            let socket = new SockJS("/server1")
+            //let socket = new WebSocket("ws://localhost:8080/server1");
+            stompClient = Stomp.over(socket)
+            stompClient.connect( {}, function(frame){
+                console.log("connected to WebSocket: "+frame)
+            })
+        }
+
+        function showMesaage(message){
+            $("#message-container-table").append(`<tr><td><b>${message.name} :</b>${message.content}</td></tr>`)
+            console.log("server sent message")
+        }
+
+        function sendMessage() {
+            let jsonOb= {
+                name: localStorage.getItem("name"),
+                content: $("#message-value").val()
+            }
+            // send message to websocket
+            stompClient.send("/app/message",{}, JSON.stringify(jsonOb))
+           // stompClient.send("/app/subscribe",{}, JSON.stringify(jsonOb))
+        }
+
+        function subscribe() {
+            setTimeout(() => {
+                    stompClient.subscribe("/topic/return-to", (response) => {
+                    console.log("message received");
+                    showMesaage(JSON.parse(response.body));
+                    });
+            }, 2000);
+        }
+
+        $(document).ready(() => {
+            $("#login").click(()=>{
+                let name=$("#name-value").val()
+                localStorage.setItem("name",name)
+                $('#title').html(`Welcome, <b>${name}</b>`)
+                connect();
+                $("#name-from").addClass('d-none')
+                   $('#chat-room').removeClass('d-none')
+            })
+
+            $("#send-btn").click(()=>{
+                sendMessage();
+            })
+
+             $("#broacast-btn").click(()=>{
+                    fetch('/api/hello')
+                        .then(response => response.text())
+                        .then(data => {
+                            document.getElementById('apiResponse').innerText = data;
+                        })
+                        .catch(error => console.error('Error:', error));
+             })
+
+              $("#subscribe").click(()=>{
+                subscribe();
+              })
+
+        })
+
+    </script>
+</body>
+</html>
